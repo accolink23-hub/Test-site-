@@ -1,1 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accolink - Kasane-Chobe Guesthouses</title>
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --primary: #1a5a3a;
+      --primary-dark: #0f3d27;
+      --accent: #8b6f47;
+      --bg: #f5f3f0;
+      --text: #1a1a1a;
+      --white: #ffffff;
+      --success: #25d366; /* THE GREEN COLOR */
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); }
+
+    /* Header & Search */
+    header { background: var(--primary); color: white; padding: 20px; text-align: center; }
+    .search-area { background: var(--primary); padding: 0 20px 20px; text-align: center; }
+    #searchBox { 
+      width: 100%; max-width: 500px; padding: 12px 20px; border-radius: 25px; 
+      border: none; font-size: 16px; outline: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Modern Swipable Carousel */
+    .carousel-viewport {
+      display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+      scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+      border-radius: 12px; aspect-ratio: 16/9; background: #ddd;
+    }
+    .carousel-viewport::-webkit-scrollbar { display: none; }
+    .carousel-item { flex: 0 0 100%; scroll-snap-align: start; width: 100%; height: 100%; }
+    .carousel-item img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Lead Modal */
+    #leadModal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-box { background: white; padding: 25px; border-radius: 16px; width: 100%; max-width: 380px; }
+    .modal-box input { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; font-family: inherit; }
+    
+    .btn-submit { 
+      background: var(--primary); color: white; width: 100%; padding: 16px; 
+      border-radius: 8px; font-weight: 700; font-size: 16px; margin-top: 10px; cursor: pointer;
+    }
+    .btn-submit:disabled { background: #999; }
+
+    /* Green Pricing */
+    .card-price, .detail-price, .room-price { color: var(--success) !important; font-weight: 800; font-size: 1.2rem; }
+
+    /* Grid Layout */
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .guesthouses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: 0.3s; }
+    .card:hover { transform: translateY(-3px); }
+    .card-img { width: 100%; height: 200px; object-fit: cover; cursor: pointer; }
+    .card-body { padding: 15px; }
+
+    .amenity-tag { font-size: 11px; background: #e8f5e9; color: var(--primary); padding: 4px 8px; border-radius: 4px; margin-right: 5px; font-weight: 600; display: inline-block; margin-bottom: 5px; }
+    .amenities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+    .room-card { background: #fafafa; padding: 12px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 8px; }
+
+    /* Detail Overlay */
+    .overlay { display: none; position: fixed; inset: 0; background: white; z-index: 500; overflow-y: auto; }
+    .overlay.active { display: block; }
+    .close-btn { position: sticky; top: 15px; left: 15px; background: var(--primary); color: white; padding: 10px 20px; border-radius: 30px; z-index: 600; border:none; cursor: pointer; font-weight: bold; }
+
+    .contact-bar { display: flex; gap: 10px; margin-top: 20px; }
+    .c-btn { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: 700; text-decoration: none; border:none; cursor: pointer; font-size: 16px; }
+    .bg-wa { background: #25d366; }
+    .bg-phone { background: var(--accent); }
+
+    .no-results { text-align: center; grid-column: 1/-1; padding: 40px; color: #666; }
+  </style>
+</head>
+<body>
+
+<div id="leadModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:10px">Secure Your Booking</h3>
+    <input type="text" id="gName" placeholder="Full Name">
+    <input type="date" id="gDate">
+    <input type="tel" id="gPhone" placeholder="WhatsApp Number">
+    <button class="btn-submit" id="mainSubBtn" onclick="processLead()">Continue</button>
+    <p onclick="closeLead()" style="text-align:center; margin-top:15px; font-size:13px; color:#666; cursor:pointer">Go Back</p>
+  </div>
+</div>
+
+<header><h1>Accolink</h1></header>
+<div class="search-area">
+  <input type="text" id="searchBox" placeholder="Search by name or location..." onkeyup="filterHouses()">
+</div>
+
+<div class="container">
+  <div id="houseGrid" class="guesthouses-grid"></div>
+</div>
+
+<div id="detailPage" class="overlay">
+  <button class="close-btn" onclick="closeDetail()">← Back</button>
+  <div id="detailContent" class="container"></div>
+</div>
+
+<script>
+  const S_URL = 'https://bqaebgtvwxpdaqwdytss.supabase.co';
+  const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYWViZ3R2d3hwZGFxd2R5dHNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MjIzNTIsImV4cCI6MjA4NjA5ODM1Mn0.gvhaJqDncopmuSzw3fs91rS87G2--bDtvZeWEEg8mno';
+  const _sb = supabase.createClient(S_URL, S_KEY);
+
+  let houses = [];
+  let currentSelect = {};
+  let actionType = '';
+
+  // 1. FETCH ALL DATA
+  async function loadData() {
+    const { data } = await _sb.from('guesthouses').select('*').order('created_at', { ascending: false });
+    if(data) {
+      houses = data;
+      renderHouses(houses);
+    }
+  }
+
+  // 2. RENDER THE CARDS
+  function renderHouses(data) {
+    const grid = document.getElementById('houseGrid');
+    if(data.length === 0) {
+      grid.innerHTML = `<div class="no-results">No guesthouses found matching that search.</div>`;
+      return;
+    }
+    grid.innerHTML = data.map(h => `
+      <div class="card">
+        <img src="${h.images?.[0] || 'https://via.placeholder.com/400x200'}" class="card-img" onclick="openDetail(${h.id})">
+        <div class="card-body">
+          <h3 onclick="openDetail(${h.id})" style="cursor:pointer">${h.name}</h3>
+          <p style="color:#666; font-size:14px">📍 ${h.location}</p>
+          <p class="card-price">P${h.min_price}/night</p>
+          <div style="margin-top:10px">${(h.amenities || []).slice(0,3).map(a => `<span class="amenity-tag">${a}</span>`).join('')}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // 3. SEARCH LOGIC
+  function filterHouses() {
+    const query = document.getElementById('searchBox').value.toLowerCase();
+    const filtered = houses.filter(h => 
+      h.name.toLowerCase().includes(query) || 
+      h.location.toLowerCase().includes(query)
+    );
+    renderHouses(filtered);
+  }
+
+  // 4. DETAIL VIEW WITH SWIPE
+  function openDetail(id) {
+    const h = houses.find(x => x.id === id);
+    currentSelect = h;
+    
+    const galleryHtml = (h.images || []).map(img => `<div class="carousel-item"><img src="${img}"></div>`).join('');
+    const amenitiesHtml = (h.amenities || []).map(a => `<div style="font-size:14px">✅ ${a}</div>`).join('');
+    const roomsHtml = (h.room_types || []).map(r => `
+      <div class="room-card">
+        <div style="font-weight:700">${r.room_type}</div>
+        <div class="room-price">P${r.price}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('detailContent').innerHTML = `
+      <div class="carousel-viewport" style="margin-top:20px">${galleryHtml}</div>
+      <p style="text-align:center; color:#999; font-size:12px; margin-top:8px">← Swipe photos →</p>
+      
+      <h2 style="margin-top:20px">${h.name}</h2>
+      <p class="card-price" style="font-size:24px">P${h.min_price}</p>
+      <p style="margin-top:10px; color:#444">${h.description || ''}</p>
+
+      <h3 style="margin:25px 0 10px">Amenities</h3>
+      <div class="amenities-grid">${amenitiesHtml}</div>
+
+      <h3>Rooms & Rates</h3>
+      <div style="margin-top:10px">${roomsHtml}</div>
+
+      <div class="contact-bar">
+        <button onclick="triggerLead('whatsapp')" class="c-btn bg-wa">WhatsApp</button>
+        <button onclick="triggerLead('call')" class="c-btn bg-phone">Call Now</button>
+      </div>
+    `;
+    document.getElementById('detailPage').classList.add('active');
+  }
+
+  // 5. LEAD COLLECTION
+  function triggerLead(type) {
+    actionType = type;
+    document.getElementById('gName').value = localStorage.getItem('localName') || '';
+    document.getElementById('gPhone').value = localStorage.getItem('localPhone') || '';
+    document.getElementById('leadModal').style.display = 'flex';
+  }
+
+  async function processLead() {
+    const name = document.getElementById('gName').value;
+    const phone = document.getElementById('gPhone').value;
+    const date = document.getElementById('gDate').value;
+    const btn = document.getElementById('mainSubBtn');
+
+    if(!name || !phone || !date) return alert("Please fill in all details");
+
+    btn.disabled = true;
+    btn.innerText = "Connecting...";
+    localStorage.setItem('localName', name);
+    localStorage.setItem('localPhone', phone);
+
+    // ANALYTICS TRACKING
+    if(typeof gtag === 'function') {
+      gtag('event', 'click_contact', { 'house': currentSelect.name, 'method': actionType });
+    }
+
+    try {
+      await _sb.from('leads').insert([{
+        guest_name: name, guest_phone: phone, 
+        house_name: currentSelect.name, check_in_date: date, action_type: actionType
+      }]);
+    } finally {
+      btn.disabled = false;
+      document.getElementById('leadModal').style.display = 'none';
+      
+      if(actionType === 'whatsapp') {
+        const msg = encodeURIComponent(`Hi, I saw ${currentSelect.name} on Accolink. I'm interested in booking for ${date}.`);
+        window.open(`https://wa.me/${currentSelect.whatsapp.replace(/\D/g,'')}?text=${msg}`, '_blank');
+      } else {
+        window.location.href = `tel:${currentSelect.phone}`;
+      }
+    }
+  }
+
+  function closeDetail() { document.getElementById('detailPage').classList.remove('active'); }
+  function closeLead() { document.getElementById('leadModal').style.display = 'none'; }
+  loadData();
+</script>
+</body>
+</html>
 
