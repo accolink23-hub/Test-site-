@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -77,6 +77,7 @@
       margin: 10px 0;
       border: 1px solid var(--border);
       border-radius: 6px;
+      font-size: 16px;
     }
 
     .btn-submit {
@@ -692,11 +693,11 @@
   <div id="leadModal">
     <div class="modal-box">
       <h3>Contact Guest House</h3>
-      <p>Please enter your details to proceed.</p>
+      <p>Enter details to proceed with your booking.</p>
       <input type="text" id="guestName" placeholder="Your Name" required>
-      <input type="date" id="guestDate" required>
+      <input type="date" id="guestDate" required style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--border); border-radius: 6px; font-family: inherit;">
       <input type="tel" id="guestPhone" placeholder="Your Phone Number" required>
-      <button class="btn-submit" onclick="submitLead()">Continue to Booking</button>
+      <button class="btn-submit" id="modalSubmitBtn" onclick="submitLead()">Continue</button>
       <p style="font-size: 11px; color: #999; margin-top: 10px; cursor: pointer;" onclick="closeLeadModal()">Cancel</p>
     </div>
   </div>
@@ -743,9 +744,10 @@
     let allGuesthouses = [];
     let displayedGuesthouses = [];
     
+    // Variables for current interaction
     let currentHouse = "";
     let currentOwnerPhone = "";
-    let currentAction = ""; // Tracks if user clicked Call or WhatsApp
+    let currentAction = ""; // "whatsapp" or "call"
 
     async function init() {
       if ('serviceWorker' in navigator) {
@@ -777,12 +779,9 @@
           displayedGuesthouses = [...displayedGuesthouses, ...data];
         }
         renderGuesthouses(displayedGuesthouses);
-        document.getElementById('loadMoreContainer').style.display = 
-          data.length === itemsPerPage ? 'flex' : 'none';
+        document.getElementById('loadMoreContainer').style.display = data.length === itemsPerPage ? 'flex' : 'none';
       } catch (error) {
         console.error('Error:', error);
-        document.getElementById('guesthouses').innerHTML = 
-          '<div class="no-results">Unable to load guesthouses. Please try again.</div>';
       }
     }
 
@@ -794,17 +793,13 @@
       }
       container.innerHTML = guesthouses.map(gh => {
         const mainImage = gh.images && gh.images.length > 0 ? gh.images[0] : 'https://via.placeholder.com/400x300?text=No+Image';
-        const price = gh.min_price || 0;
-        const amenityList = (gh.amenities || []).slice(0, 3).map(a => `<span class="amenity-tag">${a}</span>`).join('');
-        const moreAmenities = (gh.amenities || []).length > 3 ? `<span class="amenity-tag">+${(gh.amenities || []).length - 3}</span>` : '';
         return `
           <div class="card">
-            <img src="${mainImage}" alt="${gh.name}" class="card-image" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Error'">
+            <img src="${mainImage}" alt="${gh.name}" class="card-image">
             <div class="card-content">
               <h3 class="card-title">${gh.name || 'Guesthouse'}</h3>
               <p class="card-location">📍 ${gh.location || 'Location not specified'}</p>
-              <p class="card-price">From P${price}/night</p>
-              <div class="amenities">${amenityList}${moreAmenities}</div>
+              <p class="card-price">From P${gh.min_price || 0}/night</p>
               <button class="card-button" onclick="showDetail(${gh.id})">Explore Guesthouse</button>
             </div>
           </div>
@@ -814,7 +809,7 @@
 
     function filterGuesthouses() {
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-      displayedGuesthouses = searchTerm === '' ? allGuesthouses : allGuesthouses.filter(gh => 
+      displayedGuesthouses = allGuesthouses.filter(gh => 
         (gh.name && gh.name.toLowerCase().includes(searchTerm)) ||
         (gh.location && gh.location.toLowerCase().includes(searchTerm))
       );
@@ -824,35 +819,15 @@
     function loadMore() {
       currentPage++;
       loadGuesthouses();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function showDetail(id) {
       const gh = allGuesthouses.find(g => g.id === id);
       if (!gh) return;
+      
       const images = gh.images || [];
-      const roomTypes = gh.room_types || [];
-      let carouselHTML = '';
-      if (images.length > 0) {
-        carouselHTML = `
-          <div class="carousel">
-            <div class="carousel-main">
-              <img id="mainImage" src="${images[0]}" alt="${gh.name}" class="carousel-image">
-              ${images.length > 1 ? `
-                <button class="carousel-btn carousel-btn-prev" onclick="prevImage()">❮</button>
-                <button class="carousel-btn carousel-btn-next" onclick="nextImage()">❯</button>
-              ` : ''}
-            </div>
-            ${images.length > 1 ? `
-              <div class="carousel-thumbnails">
-                ${images.map((img, idx) => `<button class="thumbnail ${idx === 0 ? 'active' : ''}" onclick="goToImage(${idx})"><img src="${img}"></button>`).join('')}
-              </div>
-            ` : ''}
-          </div>
-        `;
-        window.currentImageIndex = 0;
-        window.images = images;
-      }
+      window.images = images;
+      window.currentImageIndex = 0;
 
       document.getElementById('detailView').innerHTML = `
         <div class="detail-header">
@@ -860,61 +835,96 @@
           <button class="detail-close" onclick="showHome()">×</button>
         </div>
         <div class="detail-content">
-          ${carouselHTML}
-          <h2 class="detail-title">${gh.name || 'Guesthouse'}</h2>
-          <p class="detail-location">📍 ${gh.location || 'Location not specified'}</p>
-          <p class="detail-description">${gh.description || 'No description available'}</p>
-          ${gh.amenities && gh.amenities.length > 0 ? `
-            <h3 class="detail-subtitle">Amenities</h3>
-            <div class="amenities-grid">${gh.amenities.map(a => `<div class="amenity-badge">${a}</div>`).join('')}</div>
-          ` : ''}
-          ${roomTypes.length > 0 ? `
-            <h3 class="detail-subtitle">Room Types</h3>
-            <div class="rooms-grid">${roomTypes.map(room => `
-                <div class="room-card">
-                  <h4>${room.room_type || 'Room'}</h4>
-                  <p>Capacity: ${room.capacity || 'N/A'}</p>
-                  <p class="room-price">P${room.price || 'TBA'}/night</p>
-                </div>`).join('')}</div>
-          ` : ''}
+          <div class="carousel">
+            <div class="carousel-main">
+              <img id="mainImage" src="${images[0]}" class="carousel-image">
+              <button class="carousel-btn carousel-btn-prev" onclick="prevImage()">❮</button>
+              <button class="carousel-btn carousel-btn-next" onclick="nextImage()">❯</button>
+            </div>
+          </div>
+          <h2 class="detail-title">${gh.name}</h2>
+          <p class="detail-location">📍 ${gh.location}</p>
+          <p class="detail-description">${gh.description || 'Welcome to our property.'}</p>
+          
           <div class="contact-section">
             <h3>Get in Touch</h3>
-            <p>Contact the property to make your booking or inquire about availability.</p>
             <div class="contact-buttons">
-              ${gh.whatsapp ? `<button onclick="handleContactClick('whatsapp', '${gh.name}', '${gh.whatsapp.replace(/\D/g, '')}', ${gh.id})" class="contact-btn contact-btn-whatsapp">WhatsApp</button>` : ''}
-              ${gh.phone ? `<button onclick="handleContactClick('call', '${gh.name}', '${gh.phone}', ${gh.id})" class="contact-btn contact-btn-phone">Call</button>` : ''}
+              <button onclick="handleContact('whatsapp', '${gh.name}', '${gh.whatsapp.replace(/\D/g, '')}')" class="contact-btn contact-btn-whatsapp">WhatsApp</button>
+              <button onclick="handleContact('call', '${gh.name}', '${gh.phone}')" class="contact-btn contact-btn-phone">Call</button>
             </div>
           </div>
         </div>
       `;
       document.getElementById('detailOverlay').classList.add('active');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // MODIFIED CONTACT LOGIC
-    function handleContactClick(action, houseName, phone, id) {
+    // UPDATED LEAD LOGIC
+    function handleContact(action, houseName, phone) {
       currentAction = action;
       currentHouse = houseName;
       currentOwnerPhone = phone;
-      
-      const storedName = localStorage.getItem('guestName');
-      const storedPhone = localStorage.getItem('guestPhone');
-      const storedDate = localStorage.getItem('guestDate');
 
-      if (storedName && storedPhone && storedDate) {
-        executeContact(id);
-      } else {
-        document.getElementById('leadModal').style.display = 'flex';
-      }
+      // Autofill if they've been here before
+      const savedName = localStorage.getItem('guest_name');
+      const savedPhone = localStorage.getItem('guest_phone');
+      
+      if(savedName) document.getElementById('guestName').value = savedName;
+      if(savedPhone) document.getElementById('guestPhone').value = savedPhone;
+
+      document.getElementById('leadModal').style.display = 'flex';
     }
 
-    function executeContact(id) {
-      if (currentAction === 'whatsapp') {
-        const message = "Hello i saw you guest house on Accolink i would like to book a room please";
-        window.open(`https://wa.me/${currentOwnerPhone}?text=${encodeURIComponent(message)}`, '_blank');
-      } else {
-        trackBookingClick(id, 'phone');
-        window.location.href = `tel:${currentOwnerPhone}`;
+    async function submitLead() {
+      const name = document.getElementById('guestName').value.trim();
+      const phone = document.getElementById('guestPhone').value.trim();
+      const date = document.getElementById('guestDate').value;
+      const btn = document.getElementById('modalSubmitBtn');
+
+      if (!name || !phone || !date) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      // Save for next time
+      localStorage.setItem('guest_name', name);
+      localStorage.setItem('guest_phone', phone);
+
+      // Disable button to prevent double clicks
+      btn.disabled = true;
+      btn.innerText = "Connecting...";
+
+      try {
+        // Record the lead in Supabase EVERY TIME
+        await _supabase.from('leads').insert([{ 
+          guest_name: name, 
+          guest_phone: phone, 
+          house_name: currentHouse,
+          check_in_date: date,
+          action_type: currentAction
+        }]);
+
+        closeLeadModal();
+
+        // Redirect based on what they clicked
+        if (currentAction === 'whatsapp') {
+          const msg = `Hello, I saw ${currentHouse} on Accolink. I'd like to book for ${date}.`;
+          window.open(`https://wa.me/${currentOwnerPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        } else {
+          window.location.href = `tel:${currentOwnerPhone}`;
+        }
+
+      } catch (err) {
+        console.error(err);
+        // Even if database fails, let the user call/text so you don't lose the customer
+        closeLeadModal();
+        if (currentAction === 'whatsapp') {
+          window.open(`https://wa.me/${currentOwnerPhone}`, '_blank');
+        } else {
+          window.location.href = `tel:${currentOwnerPhone}`;
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Continue";
       }
     }
 
@@ -922,64 +932,12 @@
       document.getElementById('leadModal').style.display = 'none';
     }
 
-    async function submitLead() {
-      const name = document.getElementById('guestName').value;
-      const phone = document.getElementById('guestPhone').value;
-      const date = document.getElementById('guestDate').value;
-
-      if (!name || !phone || !date) {
-        alert("Please provide all details.");
-        return;
-      }
-
-      localStorage.setItem('guestName', name);
-      localStorage.setItem('guestPhone', phone);
-      localStorage.setItem('guestDate', date);
-
-      const { error } = await _supabase.from('leads').insert([{ 
-        guest_name: name, 
-        guest_phone: phone, 
-        house_name: currentHouse,
-        check_in_date: date // Ensure this column exists in Supabase leads table
-      }]);
-
-      if (!error) {
-        document.getElementById('leadModal').style.display = 'none';
-        executeContact();
-      } else {
-        console.error(error.message);
-        alert("Something went wrong. Proceeding to contact anyway.");
-        document.getElementById('leadModal').style.display = 'none';
-        executeContact();
-      }
-    }
-
-    // GALLERY/HOME HELPERS
+    function showHome() { document.getElementById('detailOverlay').classList.remove('active'); }
     function nextImage() { window.currentImageIndex = (window.currentImageIndex + 1) % window.images.length; updateCarousel(); }
     function prevImage() { window.currentImageIndex = (window.currentImageIndex - 1 + window.images.length) % window.images.length; updateCarousel(); }
-    function goToImage(index) { window.currentImageIndex = index; updateCarousel(); }
-    function updateCarousel() {
-      const img = document.getElementById('mainImage');
-      if (img) img.src = window.images[window.currentImageIndex];
-      document.querySelectorAll('.thumbnail').forEach((t, i) => t.classList.toggle('active', i === window.currentImageIndex));
-    }
-    function showHome() { document.getElementById('detailOverlay').classList.remove('active'); }
-
-    async function trackBookingClick(guesthouseId, clickType) {
-      try {
-        await fetch(`${SUPABASE_URL}/rest/v1/booking_analytics`, {
-          method: 'POST',
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ guesthouse_id: guesthouseId, click_type: clickType, source: 'accolink' }),
-        });
-        gtag('event', 'booking_click', { 'guesthouse_id': guesthouseId, 'click_type': clickType });
-      } catch (error) { console.error('Tracking error:', error); }
-    }
+    function updateCarousel() { document.getElementById('mainImage').src = window.images[window.currentImageIndex]; }
 
     init();
   </script>
 </body>
 </html>
-       
-      
-      
